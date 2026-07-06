@@ -209,10 +209,10 @@ public partial class Login : Popup
             return;
         }
 
-        _server.Process = new Process();
-        _server.Process.StartInfo.WorkingDirectory = workingDirectory;
-
         // Platform-specific process startup logic
+        string fileName;
+        string processArguments;
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             var winePath = WineHelper.GetPath();
@@ -224,13 +224,13 @@ public partial class Login : Popup
                 return;
             }
 
-            _server.Process.StartInfo.FileName = winePath;
-            _server.Process.StartInfo.Arguments = $"{Constants.ClientExecutableName} {arguments}";
+            fileName = winePath;
+            processArguments = $"{Constants.ClientExecutableName} {arguments}";
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            _server.Process.StartInfo.FileName = executablePath;
-            _server.Process.StartInfo.Arguments = arguments;
+            fileName = executablePath;
+            processArguments = arguments;
         }
         else
         {
@@ -239,6 +239,10 @@ public partial class Login : Popup
             return;
         }
 
+        _server.Process = new Process();
+        _server.Process.StartInfo.WorkingDirectory = workingDirectory;
+        _server.Process.StartInfo.FileName = fileName;
+        _server.Process.StartInfo.Arguments = processArguments;
         _server.Process.StartInfo.UseShellExecute = true;
         _server.Process.EnableRaisingEvents = true;
         _server.Process.Exited += _server.ClientProcessExited;
@@ -252,6 +256,8 @@ public partial class Login : Popup
             App.AddNotification("An error occurred while launching the game. Please try again.", true);
 
             _logger.Error(ex, "Failed to start the client process for server: {Name}.", _server.Info.Name);
+
+            _server.Process = null;
         }
     }
 
