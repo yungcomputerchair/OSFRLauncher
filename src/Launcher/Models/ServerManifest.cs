@@ -6,7 +6,7 @@ public sealed class ServerManifest
 {
     public const int ManifestVersion = 2;
 
-    public const string FileName = $"{nameof(ServerManifest)}.xml";
+    public const string FileName = $"servermanifest.xml";
     public const string SchemaName = $"{nameof(ServerManifest)}.xsd";
 
     [XmlAttribute("version")]

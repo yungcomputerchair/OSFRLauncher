@@ -6,6 +6,6 @@ public enum ManifestResult
     HttpError,
     InvalidFormat,
     InvalidVersion,
-    Outdated,
+    UnsupportedVersion,
     DeserializeError
 }

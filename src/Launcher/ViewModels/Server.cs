@@ -142,9 +142,9 @@ public partial class Server : ObservableObject
 
                     switch (result.Result)
                     {
-                        case ManifestResult.Outdated:
+                        case ManifestResult.UnsupportedVersion:
                             ServerStatusFill = RedBrush;
-                            Status = App.GetText("Text.ServerStatus.Outdated");
+                            Status = App.GetText("Text.ServerStatus.UnsupportedVersion");
                             break;
 
                         default:

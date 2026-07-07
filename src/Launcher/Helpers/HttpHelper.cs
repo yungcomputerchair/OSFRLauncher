@@ -63,12 +63,13 @@ public static class HttpHelper
         }
 
         using var contentStream = await response.Content.ReadAsStreamAsync();
+        var version = 0;
 
         try
         {
             var xmlDocument = XDocument.Load(contentStream);
 
-            if (!int.TryParse(xmlDocument.Root?.Attribute("version")?.Value, out int version))
+            if (!int.TryParse(xmlDocument.Root?.Attribute("version")?.Value, out version))
             {
                 var error = "Failed to get server manifest, unknown version.";
 
@@ -77,17 +78,17 @@ public static class HttpHelper
                 return (ManifestResult.InvalidVersion, error, null);
             }
 
-            if (version != ServerManifest.ManifestVersion)
+            if (version > ServerManifest.ManifestVersion)
             {
                 var error = $"""
-                             Server manifest is out of date.
+                             Server manifest is unsupported.
                              Server Version: {version}
                              Launcher Version: {ServerManifest.ManifestVersion}
                              """;
 
                 _logger.Error(error);
 
-                return (ManifestResult.Outdated, error, null);
+                return (ManifestResult.UnsupportedVersion, error, null);
             }
         }
         catch (Exception ex)
@@ -101,19 +102,42 @@ public static class HttpHelper
 
         contentStream.Position = 0;
 
-        if (!XmlHelper.TryDeserialize<ServerManifest>(contentStream, ServerManifest.SchemaName, out var serverManifest, out var xmlError))
+        // Back-compat with v1 server manifest
+        if (version == 1)
         {
-            var error = $"""
-                         Failed to get server manifest, invalid data.
-                         Xml Error: {xmlError}
-                         """;
+            if (!XmlHelper.TryDeserialize<ServerManifestV1>(contentStream, ServerManifestV1.SchemaName, out var serverManifestV1, out var xmlError))
+            {
+                var error = $"""
+                             Failed to get server manifest, invalid data.
+                             Xml Error: {xmlError}
+                             """;
 
-            _logger.Error(error);
+                _logger.Error(error);
 
-            return (ManifestResult.DeserializeError, error, null);
+                return (ManifestResult.DeserializeError, error, null);
+            }
+
+            var serverManifest = ServerManifestV1.ToServerManifest(serverManifestV1);
+
+            return (ManifestResult.Success, string.Empty, serverManifest);
         }
 
-        return (ManifestResult.Success, string.Empty, serverManifest);
+        // Current version
+        {
+            if (!XmlHelper.TryDeserialize<ServerManifest>(contentStream, ServerManifest.SchemaName, out var serverManifest, out var xmlError))
+            {
+                var error = $"""
+                            Failed to get server manifest, invalid data.
+                            Xml Error: {xmlError}
+                            """;
+
+                _logger.Error(error);
+
+                return (ManifestResult.DeserializeError, error, null);
+            }
+
+            return (ManifestResult.Success, string.Empty, serverManifest);
+        }
     }
 
     public static async Task<(ManifestResult Result, string Error, ClientManifest? ClientManifest)> GetClientManifestAsync(string serverUrl)
@@ -161,17 +185,17 @@ public static class HttpHelper
                 return (ManifestResult.InvalidVersion, error, null);
             }
 
-            if (version != ClientManifest.ManifestVersion)
+            if (version > ClientManifest.ManifestVersion)
             {
                 var error = $"""
-                             Client manifest is out of date.
+                             Client manifest is unsupported.
                              Server Version: {version}
                              Launcher Version: {ClientManifest.ManifestVersion}
                              """;
 
                 _logger.Error(error);
 
-                return (ManifestResult.Outdated, error, null);
+                return (ManifestResult.UnsupportedVersion, error, null);
             }
         }
         catch (Exception ex)

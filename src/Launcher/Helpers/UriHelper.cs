@@ -8,4 +8,14 @@ public static class UriHelper
     {
         return paths.Aggregate(url, (c, s) => $"{c.TrimEnd('/')}/{s.Replace('\\', '/').Trim('/')}");
     }
+
+    public static string StripLeaf(string url)
+    {
+        var lastSlashIndex = url.LastIndexOf('/');
+        if (lastSlashIndex >= 0)
+        {
+            return url[..(lastSlashIndex + 1)];
+        }
+        return url;
+    }
 }
