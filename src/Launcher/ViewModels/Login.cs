@@ -257,6 +257,7 @@ public partial class Login : Popup
 
             _logger.Error(ex, "Failed to start the client process for server: {Name}.", _server.Info.Name);
 
+            _server.Process?.Dispose();
             _server.Process = null;
         }
     }
