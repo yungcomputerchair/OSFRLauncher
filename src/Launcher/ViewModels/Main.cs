@@ -79,6 +79,16 @@ public partial class Main : ObservableObject
         {
             Servers.Add(new Server(serverInfo, this));
         }
+
+        if (Settings.Instance.ServerInfoList.Count == 0)
+        {
+            _logger.Info("No servers found in settings. Adding default servers.");
+            foreach (var defaultServerUrl in Constants.DefaultServerUrls)
+            {
+                _ = AddServer.TryAddServerAsync(defaultServerUrl);
+            }
+        }
+
         UpdateDiscordActivity();
     }
 
@@ -110,7 +120,7 @@ public partial class Main : ObservableObject
     }
 
     [RelayCommand]
-    public void AddServer() => App.ShowPopup(new AddServer());
+    public void ShowAddServer() => App.ShowPopup(new AddServer());
 
     [RelayCommand]
     public async Task OpenLogsAsync()

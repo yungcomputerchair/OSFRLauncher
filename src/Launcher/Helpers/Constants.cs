@@ -14,6 +14,7 @@ public static class Constants
     public const string ClientExecutableName = "FreeRealms.exe";
     public const string DirectXDownloadUrl = "https://www.microsoft.com/download/details.aspx?id=35";
 
+    public static readonly string[] DefaultServerUrls = ["https://opensourcefreerealms.com"];
 
     public static readonly string LogsDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
 

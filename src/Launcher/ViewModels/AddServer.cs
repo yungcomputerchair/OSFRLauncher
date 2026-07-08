@@ -54,17 +54,17 @@ public partial class AddServer : Popup
     {
         ProgressDescription = App.GetText("Text.Add_Server.Loading");
 
-        return OnAddServerAsync();
+        return TryAddServerAsync(ServerUrl);
     }
 
-    private async Task<bool> OnAddServerAsync()
+    public static async Task<bool> TryAddServerAsync(string serverUrl)
     {
         try
         {
-            ServerUrl = ServerUrl.Trim();
+            serverUrl = serverUrl.Trim();
 
             // Fetch the server manifest from the provided URL.
-            var result = await HttpHelper.GetServerManifestAsync(ServerUrl);
+            var result = await HttpHelper.GetServerManifestAsync(serverUrl);
 
             if (result.Result != ManifestResult.Success || result.ServerManifest is null)
             {
@@ -103,7 +103,7 @@ public partial class AddServer : Popup
             // If all checks pass, create the ServerInfo object and save it.
             var serverInfo = new ServerInfo
             {
-                Url = ServerUrl,
+                Url = serverUrl,
 
                 Name = serverManifest.Name,
                 Description = serverManifest.Description,

@@ -74,7 +74,7 @@
 
         <!-- Add Server -->
         <Button Classes="flat primary"
-                Command="{Binding AddServerCommand}"
+                Command="{Binding ShowAddServerCommand}"
                 FontFamily="{StaticResource FontDefault}">
           <Button.Background>
             <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
