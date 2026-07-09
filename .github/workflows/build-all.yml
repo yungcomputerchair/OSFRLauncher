@@ -1,0 +1,62 @@
+name: Build All Flavors
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to tag the release with (e.g. 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build ${{ matrix.flavor }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: linux-x64
+            os: ubuntu-latest
+            script: ./build_linux-x64.sh
+          - flavor: linux-arm64
+            os: ubuntu-latest
+            script: ./build_linux-arm64.sh
+          - flavor: osx-x64
+            os: macos-latest
+            script: ./build_osx-x64.sh
+          - flavor: osx-arm64
+            os: macos-latest
+            script: ./build_osx-arm64.sh
+          - flavor: win-x64
+            os: windows-latest
+            script: build_win-x64.bat
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: src/global.json
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x "${{ matrix.script }}"
+          "${{ matrix.script }}" "${{ inputs.version }}"
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: ${{ matrix.script }} "${{ inputs.version }}"
+        shell: cmd
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: OSFRLauncher-${{ inputs.version }}-${{ matrix.flavor }}
+          path: releases/
+          if-no-files-found: error
