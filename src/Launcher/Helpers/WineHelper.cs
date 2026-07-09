@@ -36,4 +36,9 @@ public static class WineHelper
 
         return string.Empty;
     }
+
+    public static bool IsInstalled()
+    {
+        return !string.IsNullOrEmpty(GetPath());
+    }
 }

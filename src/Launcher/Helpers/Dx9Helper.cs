@@ -12,35 +12,28 @@ public static partial class Dx9Helper
     {
         try
         {
-            string? systemPath = null;
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+                RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-                systemPath = Path.Combine(winDir, "System32");
+                // Wine uses wined3d which it ships with, not native DirectX DLLs
+                return WineHelper.IsInstalled();
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
-                     RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                if (string.IsNullOrEmpty(WineHelper.GetPath()))
-                    return false;
 
-                var winePrefix = Environment.GetEnvironmentVariable("WINEPREFIX") ??
-                                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wine");
-
-                systemPath = Path.Combine(winePrefix, "drive_c", "windows", "system32");
-            }
-            else
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                // Unknown platform
                 return false;
             }
 
-            if (!Directory.Exists(systemPath))
-                return false;
+            string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+
+            // The game client is 32-bit, so its DLLs are loaded from SysWOW64 on 64-bit Windows.
+            // Since the launcher is 64-bit only, this is the dir we need to check; not System32
+            string sysWow64Path = Path.Combine(winDir, "SysWOW64");
 
             foreach (var requiredDll in RequiredDlls)
             {
-                if (!File.Exists(Path.Combine(systemPath, requiredDll)))
+                if (!File.Exists(Path.Combine(sysWow64Path, requiredDll)))
                     return false;
             }
         }
