@@ -104,16 +104,34 @@ jobs:
             for file in "$dir"*; do
               [ -f "$file" ] || continue
               name="$(basename "$file")"
+              case "$name" in
+                *.nupkg | *.json | RELEASES | RELEASES-*)
+                  cp "$file" "staging/$name"
+                  ;;
+              esac
+            done
+
+            for file in "$dir"*; do
+              [ -f "$file" ] || continue
+              name="$(basename "$file")"
+              case "$name" in
+                *.nupkg | *.json | RELEASES | RELEASES-*)
+                  continue
+                  ;;
+              esac
 
               if [[ "$name" == *"$channel"* ]]; then
-                # already includes channel in name
-                cp "$file" "staging/$name"
+                newname="$name"
               elif [[ "$name" == *.* ]]; then
-                # add channel before extension to disambiguate (e.g. OSFRLauncher.AppImage)
-                cp "$file" "staging/${name%.*}-${channel}.${name##*.}"
+                newname="${name%.*}-${channel}.${name##*.}"
               else
-                # add channel at the end of the name to disambiguate (e.g. RELEASES)
-                cp "$file" "staging/${name}-${channel}"
+                newname="${name}-${channel}"
+              fi
+
+              cp "$file" "staging/$newname"
+
+              if [ "$newname" != "$name" ]; then
+                sed -i "s|\"$name\"|\"$newname\"|g" "staging/assets.${channel}.json"
               fi
             done
           done
