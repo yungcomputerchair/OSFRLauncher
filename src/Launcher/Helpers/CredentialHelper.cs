@@ -50,7 +50,7 @@ public static class CredentialHelper
         {
             lock (_sync)
             {
-                return Load().TryGetValue(server.SavePath, out var protectedPassword)
+                return Load().TryGetValue(server.Url, out var protectedPassword)
                     ? _protector.Unprotect(protectedPassword)
                     : null;
             }
@@ -73,7 +73,7 @@ public static class CredentialHelper
             lock (_sync)
             {
                 var store = Load();
-                store[server.SavePath] = _protector.Protect(password);
+                store[server.Url] = _protector.Protect(password);
                 Save(store);
             }
         }
@@ -94,7 +94,7 @@ public static class CredentialHelper
             {
                 var store = Load();
 
-                if (store.Remove(server.SavePath))
+                if (store.Remove(server.Url))
                     Save(store);
             }
         }
