@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.5" Condition="'$(Configuration)' == 'Debug'" />
-    <PackageReference Include="Devlooped.CredentialManager" Version="2.7.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
     <PackageReference Include="HashDepot" Version="3.2.0" />
     <PackageReference Include="LiveMarkdown.Avalonia" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.9" />

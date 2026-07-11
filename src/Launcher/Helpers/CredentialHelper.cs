@@ -1,9 +1,11 @@
 using System;
-using System.Runtime.InteropServices;
-
-using GitCredentialManager;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 using Launcher.Models;
+
+using Microsoft.AspNetCore.DataProtection;
 
 using NLog;
 
@@ -11,54 +13,51 @@ namespace Launcher.Helpers;
 
 public static class CredentialHelper
 {
-    private const string CredStoreEnv = "GCM_CREDENTIAL_STORE";
-
-    private const string PasswordService = "passwords";
+    private const string KeysDirectory = "keys";
+    private const string PasswordFile = "passwords.dat";
+    private const string ProtectorPurpose = "OSFRLauncher.Passwords.v1";
 
     private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
-    private static readonly ICredentialStore? _store = CreateStore();
+    private static readonly object _sync = new();
+    private static readonly string _storePath = Path.Combine(Constants.SavePath, PasswordFile);
+    private static readonly IDataProtector? _protector = CreateProtector();
 
-    private static ICredentialStore? CreateStore()
+    private static IDataProtector? CreateProtector()
     {
         try
         {
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(CredStoreEnv)))
-            {
-                string? store = null;
+            var keyDirectory = new DirectoryInfo(Path.Combine(Constants.SavePath, KeysDirectory));
+            keyDirectory.Create();
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    store = "wincredman";
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                    store = "keychain";
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                    // Almost all Linux DEs use credential managers that implement the secret service
-                    store = "secretservice";
-
-                if (store is not null)
-                    Environment.SetEnvironmentVariable(CredStoreEnv, store);
-            }
-
-            return CredentialManager.Create("OSFRLauncher");
+            return DataProtectionProvider
+                .Create(keyDirectory)
+                .CreateProtector(ProtectorPurpose);
         }
         catch (Exception ex)
         {
-            _logger.Warn(ex, "Credential store unavailable.");
+            _logger.Warn(ex, "Password protection unavailable.");
+
             return null;
         }
     }
 
     public static string? GetPassword(ServerInfo server)
     {
-        if (_store is null)
+        if (_protector is null)
             return null;
 
         try
         {
-            return _store.Get(PasswordService, server.SavePath)?.Password;
+            lock (_sync)
+            {
+                return Load().TryGetValue(server.SavePath, out var protectedPassword)
+                    ? _protector.Unprotect(protectedPassword)
+                    : null;
+            }
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to read the password from the OS credential store.");
+            _logger.Error(ex, "Failed to read the stored password.");
 
             return null;
         }
@@ -66,31 +65,62 @@ public static class CredentialHelper
 
     public static void SavePassword(ServerInfo server, string password)
     {
-        if (_store is null)
+        if (_protector is null)
             return;
 
         try
         {
-            _store.AddOrUpdate(PasswordService, server.SavePath, password);
+            lock (_sync)
+            {
+                var store = Load();
+                store[server.SavePath] = _protector.Protect(password);
+                Save(store);
+            }
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to write the password to the OS credential store.");
+            _logger.Error(ex, "Failed to write the password to protected storage.");
         }
     }
 
     public static void Clear(ServerInfo server)
     {
-        if (_store is null)
+        if (_protector is null)
             return;
 
         try
         {
-            _store.Remove(PasswordService, server.SavePath);
+            lock (_sync)
+            {
+                var store = Load();
+
+                if (store.Remove(server.SavePath))
+                    Save(store);
+            }
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to remove the password from the OS credential store.");
+            _logger.Error(ex, "Failed to remove the password from protected storage.");
         }
+    }
+
+    private static Dictionary<string, string> Load()
+    {
+        if (!File.Exists(_storePath))
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var json = File.ReadAllText(_storePath);
+
+        if (string.IsNullOrWhiteSpace(json))
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+            ?? new Dictionary<string, string>(StringComparer.Ordinal);
+    }
+
+    private static void Save(Dictionary<string, string> store)
+    {
+        Directory.CreateDirectory(Constants.SavePath);
+        File.WriteAllText(_storePath, JsonSerializer.Serialize(store));
     }
 }
