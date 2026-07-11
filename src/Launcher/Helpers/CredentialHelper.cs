@@ -11,7 +11,7 @@ namespace Launcher.Helpers;
 
 public static class CredentialHelper
 {
-    private const string LinuxCredStoreEnv = "GCM_CREDENTIAL_STORE";
+    private const string CredStoreEnv = "GCM_CREDENTIAL_STORE";
 
     private const string PasswordService = "passwords";
 
@@ -22,11 +22,20 @@ public static class CredentialHelper
     {
         try
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) &&
-                string.IsNullOrEmpty(Environment.GetEnvironmentVariable(LinuxCredStoreEnv)))
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(CredStoreEnv)))
             {
-                // Almost all Linux DEs use credential managers that implement the secret service
-                Environment.SetEnvironmentVariable(LinuxCredStoreEnv, "secretservice");
+                string? store = null;
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    store = "wincredman";
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                    store = "keychain";
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    // Almost all Linux DEs use credential managers that implement the secret service
+                    store = "secretservice";
+
+                if (store is not null)
+                    Environment.SetEnvironmentVariable(CredStoreEnv, store);
             }
 
             return CredentialManager.Create("OSFRLauncher");
