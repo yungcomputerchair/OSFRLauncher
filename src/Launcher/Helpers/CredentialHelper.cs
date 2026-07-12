@@ -106,16 +106,24 @@ public static class CredentialHelper
 
     private static Dictionary<string, string> Load()
     {
-        if (!File.Exists(_storePath))
+        try
+        {
+            if (!File.Exists(_storePath))
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+
+            var json = File.ReadAllText(_storePath);
+
+            if (string.IsNullOrWhiteSpace(json))
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+                ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to load protected storage.");
             return new Dictionary<string, string>(StringComparer.Ordinal);
-
-        var json = File.ReadAllText(_storePath);
-
-        if (string.IsNullOrWhiteSpace(json))
-            return new Dictionary<string, string>(StringComparer.Ordinal);
-
-        return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
-            ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        }
     }
 
     private static void Save(Dictionary<string, string> store)
